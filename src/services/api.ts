@@ -25,7 +25,7 @@ export const productsApi = {
     return response.json();
   },
 
-  getProduct: async (id: string): Promise<Product> => {
+  getProduct: async (id: string | undefined): Promise<Product> => {
     const response = await fetch(`${API_BASE}/products/${id}`);
     if (!response.ok) throw new Error("Failed to fetch product");
     return response.json();
