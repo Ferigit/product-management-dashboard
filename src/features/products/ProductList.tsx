@@ -1,13 +1,8 @@
 // src/features/products/ProductList.tsx
 import { useState } from "react";
 import { useProducts } from "../../hooks/useProducts";
-import type { ProductFilters, ProductStatus } from "../../types";
-
-const statusColors: Record<ProductStatus, string> = {
-  active: "bg-green-100 text-green-800",
-  inactive: "bg-yellow-100 text-yellow-800",
-  archived: "bg-gray-100 text-gray-800",
-};
+import { ProductTable } from "./ProductTable";
+import type { ProductFilters } from "../../types";
 
 export const ProductList = () => {
   const [filters, setFilters] = useState<ProductFilters>({
@@ -21,7 +16,7 @@ export const ProductList = () => {
     setFilters((prev) => ({
       ...prev,
       [key]: value || undefined,
-      page: 1, // reset to first page on filter change
+      page: 1,
     }));
   };
 
@@ -75,87 +70,7 @@ export const ProductList = () => {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Product
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                SKU
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Category
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Price
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Stock
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Status
-              </th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {isLoading ? (
-              <tr>
-                <td colSpan={6} className="px-6 py-4 text-center text-gray-500">
-                  Loading products...
-                </td>
-              </tr>
-            ) : data?.data.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="px-6 py-4 text-center text-gray-500">
-                  No products found
-                </td>
-              </tr>
-            ) : (
-              data?.data.map((product) => (
-                <tr key={product.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">
-                      {product.name}
-                    </div>
-                    <div className="text-sm text-gray-500">
-                      {product.description}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {product.sku}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {product.category}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    ${product.price.toFixed(2)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span
-                      className={`text-sm ${
-                        product.stock === 0
-                          ? "text-red-600 font-medium"
-                          : "text-gray-900"
-                      }`}
-                    >
-                      {product.stock}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span
-                      className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusColors[product.status]}`}
-                    >
-                      {product.status}
-                    </span>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+      <ProductTable products={data?.data || []} isLoading={isLoading} />
 
       {/* Pagination */}
       {data && data.totalPages > 1 && (
