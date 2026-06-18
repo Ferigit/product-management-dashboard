@@ -1,28 +1,62 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useProducts } from "../../hooks/useProducts";
-import { ProductTable } from "./ProductTable";
-import type { ProductFilters } from "../../types";
+import { useDebounce } from "../../hooks/useDebounce";
+import { ProductTable } from "../../components/ProductTable";
+import { ProductFilters } from "../../components/ProductFilters";
+import { PaginationControls } from "../../components/PaginationControls";
+import type {
+  ProductFilters as ProductFiltersType,
+  ProductStatus,
+  ProductCategory,
+} from "../../types";
 
 export const ProductList = () => {
   const navigate = useNavigate();
-  const [filters, setFilters] = useState<ProductFilters>({
-    page: 1,
-    pageSize: 10,
-  });
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const [searchInput, setSearchInput] = useState(
+    searchParams.get("search") || "",
+  );
+  const debouncedSearch = useDebounce(searchInput, 300);
+
+  const filters: ProductFiltersType = {
+    search: debouncedSearch || undefined,
+    status: (searchParams.get("status") as ProductStatus) || undefined,
+    category: (searchParams.get("category") as ProductCategory) || undefined,
+    page: parseInt(searchParams.get("page") || "1", 10),
+    pageSize: parseInt(searchParams.get("pageSize") || "10", 10),
+  };
 
   const { data, isLoading, error } = useProducts(filters);
 
-  const handleFilterChange = (key: keyof ProductFilters, value: string) => {
-    setFilters((prev) => ({
-      ...prev,
-      [key]: value || undefined,
-      page: 1,
-    }));
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams);
+    if (debouncedSearch) params.set("search", debouncedSearch);
+    else params.delete("search");
+    params.set("page", "1");
+    setSearchParams(params);
+  }, [debouncedSearch, searchParams, setSearchParams]);
+
+  const handleFilterChange = (key: "status" | "category", value: string) => {
+    const params = new URLSearchParams(searchParams);
+    if (value) params.set(key, value);
+    else params.delete(key);
+    params.set("page", "1");
+    setSearchParams(params);
+  };
+
+  const handlePageSizeChange = (newSize: number) => {
+    const params = new URLSearchParams(searchParams);
+    params.set("pageSize", String(newSize));
+    params.set("page", "1");
+    setSearchParams(params);
   };
 
   const handlePageChange = (newPage: number) => {
-    setFilters((prev) => ({ ...prev, page: newPage }));
+    const params = new URLSearchParams(searchParams);
+    params.set("page", String(newPage));
+    setSearchParams(params);
   };
 
   if (error) {
@@ -34,15 +68,20 @@ export const ProductList = () => {
   }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      <div className="mb-6 flex items-center justify-between">
+    <div className="p-4 sm:p-6 max-w-7xl mx-auto">
+      {/* Header - stacked on mobile */}
+      <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Products</h1>
-          <p className="text-gray-600">Manage your product inventory</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">
+            Products
+          </h1>
+          <p className="text-sm sm:text-base text-gray-600">
+            Manage your product inventory
+          </p>
         </div>
         <button
           onClick={() => navigate("/products/new")}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center gap-2"
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center justify-center gap-2 text-sm sm:text-base"
         >
           <svg
             className="w-5 h-5"
@@ -61,63 +100,26 @@ export const ProductList = () => {
         </button>
       </div>
 
-      {/* Filters */}
-      <div className="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-        <input
-          type="text"
-          placeholder="Search products..."
-          className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          onChange={(e) => handleFilterChange("search", e.target.value)}
-        />
-        <select
-          className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          onChange={(e) => handleFilterChange("status", e.target.value)}
-        >
-          <option value="">All Statuses</option>
-          <option value="active">Active</option>
-          <option value="inactive">Inactive</option>
-          <option value="archived">Archived</option>
-        </select>
-        <select
-          className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          onChange={(e) => handleFilterChange("category", e.target.value)}
-        >
-          <option value="">All Categories</option>
-          <option value="Electronics">Electronics</option>
-          <option value="Clothing">Clothing</option>
-          <option value="Food">Food</option>
-          <option value="Books">Books</option>
-          <option value="Other">Other</option>
-        </select>
-      </div>
+      <ProductFilters
+        searchInput={searchInput}
+        onSearchChange={setSearchInput}
+        status={searchParams.get("status") || ""}
+        onStatusChange={(value) => handleFilterChange("status", value)}
+        category={searchParams.get("category") || ""}
+        onCategoryChange={(value) => handleFilterChange("category", value)}
+      />
 
-      {/* Table */}
       <ProductTable products={data?.data || []} isLoading={isLoading} />
 
-      {/* Pagination */}
-      {data && data.totalPages > 1 && (
-        <div className="mt-6 flex items-center justify-between">
-          <div className="text-sm text-gray-700">
-            Showing page {data.page} of {data.totalPages} ({data.total} total
-            products)
-          </div>
-          <div className="flex gap-2">
-            <button
-              onClick={() => handlePageChange(data.page - 1)}
-              disabled={data.page === 1}
-              className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-            >
-              Previous
-            </button>
-            <button
-              onClick={() => handlePageChange(data.page + 1)}
-              disabled={data.page === data.totalPages}
-              className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-            >
-              Next
-            </button>
-          </div>
-        </div>
+      {data && (
+        <PaginationControls
+          currentPage={data.page}
+          totalPages={data.totalPages}
+          totalItems={data.total}
+          pageSize={filters.pageSize!}
+          onPageChange={handlePageChange}
+          onPageSizeChange={handlePageSizeChange}
+        />
       )}
     </div>
   );
