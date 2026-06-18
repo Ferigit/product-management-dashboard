@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import ProductForm from "../../components/ProductForm";
 import { productsApi } from "../../services/api";
-import type { ProductFormData } from "../../types";
+import type { Product, ProductFormData, PaginatedResponse } from "../../types";
 
 export function EditProduct() {
   const { id } = useParams<{ id: string }>();
@@ -27,9 +27,57 @@ export function EditProduct() {
     error: mutateError,
   } = useMutation({
     mutationFn: (data: ProductFormData) => productsApi.updateProduct(id!, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["products"] });
+    onMutate: async (newData) => {
+      await queryClient.cancelQueries({ queryKey: ["product", id] });
+      await queryClient.cancelQueries({ queryKey: ["products"] });
+
+      const previousProduct = queryClient.getQueryData<Product>([
+        "product",
+        id,
+      ]);
+      const previousLists = queryClient.getQueriesData({
+        queryKey: ["products"],
+      });
+
+      if (previousProduct) {
+        const updatedProduct: Product = {
+          ...previousProduct,
+          ...newData,
+          updatedAt: new Date().toISOString(),
+        };
+
+        queryClient.setQueryData(["product", id], updatedProduct);
+
+        queryClient.setQueriesData<PaginatedResponse<Product>>(
+          { queryKey: ["products"] },
+          (old: PaginatedResponse<Product> | undefined) => {
+            if (!old?.data) return old;
+            return {
+              ...old,
+              data: old.data.filter((p: Product) => p.id !== id),
+              total: old.total - 1,
+            };
+          },
+        );
+      }
+
+      return { previousProduct, previousLists };
+    },
+    onError: (_err, _variables, context) => {
+      if (context?.previousProduct) {
+        queryClient.setQueryData(["product", id], context.previousProduct);
+      }
+      if (context?.previousLists) {
+        context.previousLists.forEach(([key, data]) => {
+          queryClient.setQueryData(key, data);
+        });
+      }
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["product", id] });
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+    },
+    onSuccess: () => {
       navigate(`/products/${id}`);
     },
   });
@@ -70,7 +118,6 @@ export function EditProduct() {
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header */}
         <div className="mb-6">
           <button
             onClick={() => navigate(`/products/${id}`)}
@@ -95,7 +142,6 @@ export function EditProduct() {
           <p className="text-gray-600 mt-1">{product.name}</p>
         </div>
 
-        {/* Error alert */}
         {isMutateError && (
           <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
             <p className="text-red-800">
@@ -104,7 +150,6 @@ export function EditProduct() {
           </div>
         )}
 
-        {/* Form */}
         <div className="bg-white rounded-lg shadow-lg p-8">
           <ProductForm
             key={id}
