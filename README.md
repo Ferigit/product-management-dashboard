@@ -4,13 +4,15 @@ A modern, efficient product management system built with React, TypeScript, and 
 
 ## Features
 
-- ✅ Paginated product listing with efficient rendering
+- ✅ Paginated product listing with configurable page size (5, 10, 20, 50)
 - ✅ Debounced search with URL persistence
 - ✅ Multi-criteria filtering (status, category)
 - ✅ Create, edit, and delete operations with optimistic UI updates
 - ✅ Comprehensive form validation (synchronous, asynchronous, and cross-field)
 - ✅ Efficient cache management with React Query
-- ✅ Shareable URLs with filter and pagination state
+- ✅ Shareable URLs with filter, pagination, and page size state
+- ✅ Responsive design: card layout on mobile, table on desktop
+- ✅ Reusable form input components (`TextField`, `NumberField`, `SelectField`, etc.)
 - ✅ Graceful loading and error states
 - ✅ Rollback on failed mutations
 
@@ -39,27 +41,45 @@ npm run build
 
 
 src/
-├── components/          # Reusable UI components
-│   ├── ProductForm.tsx  # Product creation/editing form with validation
-│   └── ConfirmModal.tsx # Confirmation dialog for destructive actions
+├── assets/                   # Static assets (images, fonts, etc.)
+├── components/
+│   ├── form/                 # Reusable form input components
+│   │   ├── TextField.tsx
+│   │   ├── TextAreaField.tsx
+│   │   ├── NumberField.tsx
+│   │   ├── SelectField.tsx
+│   │   └── SKUField.tsx
+│   ├── ConfirmModal.tsx      # Confirmation dialog for destructive actions
+│   ├── PaginationControls.tsx # Pagination with page size selector
+│   ├── ProductFilters.tsx    # Search and filter inputs
+│   ├── ProductForm.tsx       # Product creation/editing form
+│   └── ProductTable.tsx      # Responsive product table (cards on mobile)
+├── constants/
+│   └── product.ts            # Product categories and statuses constants
 ├── features/
-│   └── products/        # Product feature modules
-│       ├── ProductList.tsx    # Main list view with filters
-│       ├── ProductTable.tsx   # Product table component
-│       ├── ProductDetail.tsx  # Individual product page
-│       ├── CreateProduct.tsx  # Product creation page
-│       └── EditProduct.tsx    # Product editing page
-├── hooks/               # Custom React hooks
-│   ├── useProducts.ts   # React Query hook for fetching products
-│   ├── useFilters.ts    # URL-persisted filter state management
-│   └── useDebounce.ts   # Debounce hook for search input
-├── services/
-│   └── api.ts           # API client with typed endpoints
+│   └── products/             # Product feature modules
+│       ├── CreateProduct.tsx # Product creation page
+│       ├── EditProduct.tsx   # Product editing page
+│       ├── ProductDetail.tsx # Individual product page
+│       └── ProductList.tsx   # Main list view with filters and pagination
+├── hooks/
+│   ├── useDebounce.ts        # Debounce hook for search input
+│   └── useProducts.ts        # React Query hook for fetching products
 ├── lib/
-│   └── queryClient.ts   # React Query configuration
+│   └── queryClient.ts        # React Query configuration
+├── mocks/                    # Mock API (MSW)
+│   ├── browser.ts            # Browser worker setup
+│   ├── data.ts               # Mock product data generator
+│   └── handlers.ts           # API request handlers
+├── services/
+│   └── api.ts                # API client with typed endpoints
 ├── types/
-│   └── index.ts         # TypeScript type definitions
-└── App.tsx              # Application router and providers
+│   └── index.ts              # TypeScript type definitions
+├── utils/
+│   └── productUtils.ts       # Shared utility functions (e.g., getStatusColor)
+├── App.tsx                   # Application router and providers
+├── main.tsx                  # Application entry point
+└── index.css                 # Global styles (Tailwind)
 
 ## Key Architectural Decisions
 
@@ -76,19 +96,31 @@ src/
 **Why**: Makes the application state shareable and bookmarkable. Users can share filtered views, and browser back/forward buttons work intuitively.
 
 **Implementation**:
-- Custom `useFilters` hook manages URL search params
-- All filters (search, status, category, page) stored in URL
+- useSearchParams from React Router manages URL query parameters
+- All filters (search, status, category, page, pageSize) stored in URL
 - Automatic page reset when filters change
+- Debounced search updates URL after typing stops
 
-### 3. Debounced Search
-**Why**: Reduces unnecessary API calls and improves performance during user typing.
+
+### 3. Responsive Design
+**Why**: Provides optimal viewing experience across devices.
 
 **Implementation**:
-- Custom `useDebounce` hook with 500ms delay
-- Immediate empty search handling
-- Local input state with debounced query execution
+- Card layout on small screens (sm and below) to avoid horizontal scrolling
+- Table layout on larger screens with column visibility adjustments
+- Tailwind CSS responsive classes (block sm:hidden, hidden sm:block)
+- Skeleton loaders for both layouts
 
-### 4. Cross-Field Validation
+
+### 4. Reusable Form Components
+**Why**: Reduces duplication and ensures consistent styling and behavior across all forms.
+
+**Implementation**:
+- TextField, TextAreaField, NumberField, SelectField, SKUField
+- Each component handles label, error display, and required indicator
+- ProductForm composes these components for the full product form
+
+### 5. Cross-Field Validation
 **Why**: Business rules often depend on multiple fields (e.g., Electronics must have weight).
 
 **Implementation**:
@@ -96,7 +128,7 @@ src/
 - Conditional requirements based on category
 - Clear error messaging for cross-field violations
 
-### 5. Asynchronous SKU Validation
+### 6. Asynchronous SKU Validation
 **Why**: Ensures SKU uniqueness without database constraint violations.
 
 **Implementation**:
@@ -105,7 +137,7 @@ src/
 - Skip check in edit mode when SKU unchanged
 - Server-side validation as final enforcement
 
-### 6. Optimistic Updates with Rollback
+### 7. Optimistic Updates with Rollback
 **Why**: Instant user feedback improves perceived performance; rollback maintains data integrity.
 
 **Implementation**:
