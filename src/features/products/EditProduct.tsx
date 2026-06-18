@@ -50,12 +50,11 @@ export function EditProduct() {
 
         queryClient.setQueriesData<PaginatedResponse<Product>>(
           { queryKey: ["products"] },
-          (old: PaginatedResponse<Product> | undefined) => {
+          (old) => {
             if (!old?.data) return old;
             return {
               ...old,
-              data: old.data.filter((p: Product) => p.id !== id),
-              total: old.total - 1,
+              data: old.data.map((p) => (p.id === id ? updatedProduct : p)),
             };
           },
         );
