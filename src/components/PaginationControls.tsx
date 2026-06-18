@@ -21,9 +21,9 @@ export const PaginationControls = ({
 
   return (
     <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-      <div className="flex items-center gap-3 text-sm text-gray-700">
+      <div className="flex flex-wrap items-center justify-center gap-2 text-sm text-gray-700">
         <span>
-          Page {currentPage} of {totalPages} ({totalItems} total products)
+          Page {currentPage} of {totalPages} ({totalItems} total)
         </span>
         <div className="flex items-center gap-1">
           <label htmlFor="pageSize" className="text-gray-600">
@@ -48,14 +48,14 @@ export const PaginationControls = ({
         <button
           onClick={() => onPageChange(currentPage - 1)}
           disabled={currentPage === 1}
-          className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 text-sm"
         >
           Previous
         </button>
         <button
           onClick={() => onPageChange(currentPage + 1)}
           disabled={currentPage === totalPages}
-          className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 text-sm"
         >
           Next
         </button>
