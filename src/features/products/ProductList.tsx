@@ -2,9 +2,11 @@ import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useProducts } from "../../hooks/useProducts";
 import { useDebounce } from "../../hooks/useDebounce";
-import { ProductTable } from "./ProductTable";
+import { ProductTable } from "../../components/ProductTable";
+import { ProductFilters } from "../../components/ProductFilters";
+import { PaginationControls } from "../../components/PaginationControls";
 import type {
-  ProductFilters,
+  ProductFilters as ProductFiltersType,
   ProductStatus,
   ProductCategory,
 } from "../../types";
@@ -13,14 +15,12 @@ export const ProductList = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  // Local state for search input (debounced)
   const [searchInput, setSearchInput] = useState(
     searchParams.get("search") || "",
   );
   const debouncedSearch = useDebounce(searchInput, 300);
 
-  // Build filters object from URL + debounced search
-  const filters: ProductFilters = {
+  const filters: ProductFiltersType = {
     search: debouncedSearch || undefined,
     status: (searchParams.get("status") as ProductStatus) || undefined,
     category: (searchParams.get("category") as ProductCategory) || undefined,
@@ -30,31 +30,29 @@ export const ProductList = () => {
 
   const { data, isLoading, error } = useProducts(filters);
 
-  // When debounced search changes, update URL (reset page to 1)
   useEffect(() => {
     const params = new URLSearchParams(searchParams);
-    if (debouncedSearch) {
-      params.set("search", debouncedSearch);
-    } else {
-      params.delete("search");
-    }
+    if (debouncedSearch) params.set("search", debouncedSearch);
+    else params.delete("search");
     params.set("page", "1");
     setSearchParams(params);
   }, [debouncedSearch]);
 
-  // Handle status/category filter changes (reset page to 1)
   const handleFilterChange = (key: "status" | "category", value: string) => {
     const params = new URLSearchParams(searchParams);
-    if (value) {
-      params.set(key, value);
-    } else {
-      params.delete(key);
-    }
+    if (value) params.set(key, value);
+    else params.delete(key);
     params.set("page", "1");
     setSearchParams(params);
   };
 
-  // Handle page change (only update page)
+  const handlePageSizeChange = (newSize: number) => {
+    const params = new URLSearchParams(searchParams);
+    params.set("pageSize", String(newSize));
+    params.set("page", "1");
+    setSearchParams(params);
+  };
+
   const handlePageChange = (newPage: number) => {
     const params = new URLSearchParams(searchParams);
     params.set("page", String(newPage));
@@ -97,66 +95,26 @@ export const ProductList = () => {
         </button>
       </div>
 
-      {/* Filters */}
-      <div className="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-        <input
-          type="text"
-          placeholder="Search products..."
-          className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          value={searchInput}
-          onChange={(e) => setSearchInput(e.target.value)}
-        />
-        <select
-          className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          value={searchParams.get("status") || ""}
-          onChange={(e) => handleFilterChange("status", e.target.value)}
-        >
-          <option value="">All Statuses</option>
-          <option value="active">Active</option>
-          <option value="inactive">Inactive</option>
-          <option value="archived">Archived</option>
-        </select>
-        <select
-          className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          value={searchParams.get("category") || ""}
-          onChange={(e) => handleFilterChange("category", e.target.value)}
-        >
-          <option value="">All Categories</option>
-          <option value="Electronics">Electronics</option>
-          <option value="Clothing">Clothing</option>
-          <option value="Food">Food</option>
-          <option value="Books">Books</option>
-          <option value="Other">Other</option>
-        </select>
-      </div>
+      <ProductFilters
+        searchInput={searchInput}
+        onSearchChange={setSearchInput}
+        status={searchParams.get("status") || ""}
+        onStatusChange={(value) => handleFilterChange("status", value)}
+        category={searchParams.get("category") || ""}
+        onCategoryChange={(value) => handleFilterChange("category", value)}
+      />
 
-      {/* Table */}
       <ProductTable products={data?.data || []} isLoading={isLoading} />
 
-      {/* Pagination */}
-      {data && data.totalPages > 1 && (
-        <div className="mt-6 flex items-center justify-between">
-          <div className="text-sm text-gray-700">
-            Showing page {data.page} of {data.totalPages} ({data.total} total
-            products)
-          </div>
-          <div className="flex gap-2">
-            <button
-              onClick={() => handlePageChange(data.page - 1)}
-              disabled={data.page === 1}
-              className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-            >
-              Previous
-            </button>
-            <button
-              onClick={() => handlePageChange(data.page + 1)}
-              disabled={data.page === data.totalPages}
-              className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-            >
-              Next
-            </button>
-          </div>
-        </div>
+      {data && (
+        <PaginationControls
+          currentPage={data.page}
+          totalPages={data.totalPages}
+          totalItems={data.total}
+          pageSize={filters.pageSize!}
+          onPageChange={handlePageChange}
+          onPageSizeChange={handlePageSizeChange}
+        />
       )}
     </div>
   );

@@ -5,6 +5,7 @@ import { useState } from "react";
 import { productsApi } from "../../services/api";
 import { ConfirmModal } from "../../components/ConfirmModal";
 import type { Product, PaginatedResponse } from "../../types";
+import { getStatusColor } from "../../utils/productUtils";
 
 export function ProductDetail() {
   const { id } = useParams<{ id: string }>();
@@ -119,19 +120,6 @@ export function ProductDetail() {
   const handleAddToCart = () => {
     console.log("Added to cart:", { product, quantity });
     alert(`Added ${quantity} ${product.name} to cart`);
-  };
-
-  const getStatusColor = (status: Product["status"]) => {
-    switch (status) {
-      case "active":
-        return "bg-green-100 text-green-800";
-      case "inactive":
-        return "bg-gray-100 text-gray-800";
-      case "archived":
-        return "bg-red-100 text-red-800";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
   };
 
   return (
