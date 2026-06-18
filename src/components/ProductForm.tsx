@@ -73,6 +73,13 @@ export default function ProductForm({
     if (form.weight !== undefined && form.weight < 0)
       next.weight = "Weight cannot be negative.";
 
+    // Cross‑field: if category is Electronics, weight must be > 0
+    if (
+      form.category === "Electronics" &&
+      (form.weight === undefined || form.weight <= 0)
+    ) {
+      next.weight = "Weight must be greater than 0 for Electronics.";
+    }
     setErrors(next);
     return Object.keys(next).length === 0;
   }
