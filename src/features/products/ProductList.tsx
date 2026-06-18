@@ -25,7 +25,7 @@ export const ProductList = () => {
     status: (searchParams.get("status") as ProductStatus) || undefined,
     category: (searchParams.get("category") as ProductCategory) || undefined,
     page: parseInt(searchParams.get("page") || "1", 10),
-    pageSize: 10,
+    pageSize: parseInt(searchParams.get("pageSize") || "10", 10),
   };
 
   const { data, isLoading, error } = useProducts(filters);
