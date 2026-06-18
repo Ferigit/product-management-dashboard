@@ -84,7 +84,7 @@ export const ProductTable = ({ products, isLoading }: ProductTableProps) => {
   }
 
   return (
-    <div className="overflow-x-auto bg-white rounded-lg shadow">
+    <div className="overflow-x-auto bg-white rounded-lg shadow max-w-[90vw] md:max-w-[100%]">
       <table className="min-w-full table-fixed divide-y divide-gray-200">
         <thead className="bg-gray-50">
           <tr>

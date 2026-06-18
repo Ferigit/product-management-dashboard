@@ -36,7 +36,7 @@ export const ProductList = () => {
     else params.delete("search");
     params.set("page", "1");
     setSearchParams(params);
-  }, [debouncedSearch]);
+  }, [debouncedSearch, searchParams, setSearchParams]);
 
   const handleFilterChange = (key: "status" | "category", value: string) => {
     const params = new URLSearchParams(searchParams);
@@ -68,15 +68,20 @@ export const ProductList = () => {
   }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      <div className="mb-6 flex items-center justify-between">
+    <div className="p-4 sm:p-6 max-w-7xl mx-auto">
+      {/* Header - stacked on mobile */}
+      <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Products</h1>
-          <p className="text-gray-600">Manage your product inventory</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">
+            Products
+          </h1>
+          <p className="text-sm sm:text-base text-gray-600">
+            Manage your product inventory
+          </p>
         </div>
         <button
           onClick={() => navigate("/products/new")}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center gap-2"
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center justify-center gap-2 text-sm sm:text-base"
         >
           <svg
             className="w-5 h-5"
