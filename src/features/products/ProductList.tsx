@@ -1,28 +1,64 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useProducts } from "../../hooks/useProducts";
+import { useDebounce } from "../../hooks/useDebounce";
 import { ProductTable } from "./ProductTable";
-import type { ProductFilters } from "../../types";
+import type {
+  ProductFilters,
+  ProductStatus,
+  ProductCategory,
+} from "../../types";
 
 export const ProductList = () => {
   const navigate = useNavigate();
-  const [filters, setFilters] = useState<ProductFilters>({
-    page: 1,
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Local state for search input (debounced)
+  const [searchInput, setSearchInput] = useState(
+    searchParams.get("search") || "",
+  );
+  const debouncedSearch = useDebounce(searchInput, 300);
+
+  // Build filters object from URL + debounced search
+  const filters: ProductFilters = {
+    search: debouncedSearch || undefined,
+    status: (searchParams.get("status") as ProductStatus) || undefined,
+    category: (searchParams.get("category") as ProductCategory) || undefined,
+    page: parseInt(searchParams.get("page") || "1", 10),
     pageSize: 10,
-  });
+  };
 
   const { data, isLoading, error } = useProducts(filters);
 
-  const handleFilterChange = (key: keyof ProductFilters, value: string) => {
-    setFilters((prev) => ({
-      ...prev,
-      [key]: value || undefined,
-      page: 1,
-    }));
+  // When debounced search changes, update URL (reset page to 1)
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams);
+    if (debouncedSearch) {
+      params.set("search", debouncedSearch);
+    } else {
+      params.delete("search");
+    }
+    params.set("page", "1");
+    setSearchParams(params);
+  }, [debouncedSearch]);
+
+  // Handle status/category filter changes (reset page to 1)
+  const handleFilterChange = (key: "status" | "category", value: string) => {
+    const params = new URLSearchParams(searchParams);
+    if (value) {
+      params.set(key, value);
+    } else {
+      params.delete(key);
+    }
+    params.set("page", "1");
+    setSearchParams(params);
   };
 
+  // Handle page change (only update page)
   const handlePageChange = (newPage: number) => {
-    setFilters((prev) => ({ ...prev, page: newPage }));
+    const params = new URLSearchParams(searchParams);
+    params.set("page", String(newPage));
+    setSearchParams(params);
   };
 
   if (error) {
@@ -67,10 +103,12 @@ export const ProductList = () => {
           type="text"
           placeholder="Search products..."
           className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          onChange={(e) => handleFilterChange("search", e.target.value)}
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
         />
         <select
           className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          value={searchParams.get("status") || ""}
           onChange={(e) => handleFilterChange("status", e.target.value)}
         >
           <option value="">All Statuses</option>
@@ -80,6 +118,7 @@ export const ProductList = () => {
         </select>
         <select
           className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          value={searchParams.get("category") || ""}
           onChange={(e) => handleFilterChange("category", e.target.value)}
         >
           <option value="">All Categories</option>
