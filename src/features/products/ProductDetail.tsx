@@ -1,15 +1,18 @@
 // src/features/products/ProductDetail.tsx
 import { useParams, useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { productsApi } from "../../services/api";
-import type { Product } from "../../types";
+import { ConfirmModal } from "../../components/ConfirmModal";
+import type { Product, PaginatedResponse } from "../../types";
 
 export function ProductDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [quantity, setQuantity] = useState(1);
   const [selectedImage, setSelectedImage] = useState(0);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   const {
     data: product,
@@ -30,6 +33,61 @@ export function ProductDetail() {
       }),
     enabled: !!product?.category,
   });
+
+  const deleteMutation = useMutation({
+    mutationFn: () => productsApi.deleteProduct(id!),
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: ["product", id] });
+      await queryClient.cancelQueries({ queryKey: ["products"] });
+
+      const previousProduct = queryClient.getQueryData<Product>([
+        "product",
+        id,
+      ]);
+      const previousLists = queryClient.getQueriesData({
+        queryKey: ["products"],
+      });
+
+      // Optimistically update the products list by removing the deleted product
+      queryClient.setQueriesData<PaginatedResponse<Product>>(
+        { queryKey: ["products"] },
+        (old: PaginatedResponse<Product> | undefined) => {
+          if (!old?.data) return old;
+          return {
+            ...old,
+            data: old.data.filter((p: Product) => p.id !== id),
+            total: old.total - 1,
+          };
+        },
+      );
+
+      // Optionally remove the individual product from cache immediately
+      queryClient.removeQueries({ queryKey: ["product", id] });
+
+      return { previousProduct, previousLists };
+    },
+    onError: (_err, _variables, context) => {
+      if (context?.previousProduct) {
+        queryClient.setQueryData(["product", id], context.previousProduct);
+      }
+      if (context?.previousLists) {
+        context.previousLists.forEach(([key, data]) => {
+          queryClient.setQueryData(key, data);
+        });
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+    },
+    onSuccess: () => {
+      queryClient.removeQueries({ queryKey: ["product", id] });
+      navigate("/products");
+    },
+  });
+
+  const handleDelete = () => {
+    deleteMutation.mutate();
+  };
 
   if (isLoading) {
     return (
@@ -60,7 +118,6 @@ export function ProductDetail() {
 
   const handleAddToCart = () => {
     console.log("Added to cart:", { product, quantity });
-    // Cart functionality will be implemented later
     alert(`Added ${quantity} ${product.name} to cart`);
   };
 
@@ -80,30 +137,70 @@ export function ProductDetail() {
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Back button */}
-        <button
-          onClick={() => navigate("/products")}
-          className="mb-6 flex items-center text-gray-600 hover:text-gray-900"
-        >
-          <svg
-            className="w-5 h-5 mr-2"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
+        <div className="mb-6 flex items-center justify-between">
+          <button
+            onClick={() => navigate("/products")}
+            className="flex items-center text-gray-600 hover:text-gray-900"
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M15 19l-7-7 7-7"
-            />
-          </svg>
-          Back to Products
-        </button>
+            <svg
+              className="w-5 h-5 mr-2"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M15 19l-7-7 7-7"
+              />
+            </svg>
+            Back to Products
+          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => navigate(`/products/${id}/edit`)}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center gap-2"
+            >
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                />
+              </svg>
+              Edit
+            </button>
+            <button
+              onClick={() => setShowDeleteModal(true)}
+              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium flex items-center gap-2"
+            >
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                />
+              </svg>
+              Delete
+            </button>
+          </div>
+        </div>
 
         <div className="bg-white rounded-lg shadow-lg overflow-hidden">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 p-8">
-            {/* Image Gallery */}
             <div className="space-y-4">
               <div className="aspect-square rounded-lg overflow-hidden bg-gray-100">
                 <img
@@ -133,7 +230,6 @@ export function ProductDetail() {
               </div>
             </div>
 
-            {/* Product Info */}
             <div className="space-y-6">
               <div>
                 <h1 className="text-3xl font-bold text-gray-900 mb-2">
@@ -239,7 +335,6 @@ export function ProductDetail() {
           </div>
         </div>
 
-        {/* Related Products */}
         {relatedProducts && relatedProducts.data.length > 0 && (
           <div className="mt-12">
             <h2 className="text-2xl font-bold text-gray-900 mb-6">
@@ -276,6 +371,18 @@ export function ProductDetail() {
           </div>
         )}
       </div>
+
+      <ConfirmModal
+        isOpen={showDeleteModal}
+        title="Delete Product"
+        message={`Are you sure you want to delete "${product.name}"? This action cannot be undone.`}
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        onConfirm={handleDelete}
+        onCancel={() => setShowDeleteModal(false)}
+        isLoading={deleteMutation.isPending}
+        variant="danger"
+      />
     </div>
   );
 }
