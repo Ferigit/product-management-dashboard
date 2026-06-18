@@ -37,6 +37,9 @@ The app will be available at `http://localhost:5173` (or the port shown in termi
 bash
 npm run build
 
+Git Hooks with Husky
+This project uses Husky to enforce code quality with pre-commit hooks. After installing dependencies, Husky hooks are automatically set up. On each commit, linting and formatting checks are run via lint-staged. To skip hooks (not recommended), use git commit --no-verify.
+
 ## Project Structure
 
 
